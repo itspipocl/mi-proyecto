@@ -1,5 +1,4 @@
 import json
-import os
 
 # Rutas de tus archivos
 VOTOS_JSON = "/var/azuracast/www/votacion/data/votos.json"
