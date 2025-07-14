@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venus Radio Top 10</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ... todo tu CSS igual, sin cambios ... */
+  </style>
+</head>
+<body>
+  <header>🌸 Venus Radio - Top 10</header>
+  <div class="container">
+    <div id="search-container">
+      <input type="text" id="search" placeholder="Busca tu canción favorita..." autocomplete="off" />
+      <div class="results" id="results"></div>
+    </div>
+    <div class="top10" id="top10" aria-label="Top 10 canciones"></div>
+  </div>
+
+  <div class="repro-container" id="repro" style="display: none;">
+    <div class="repro-info">
+      <div class="repro-cover"><img src="" id="repro-img" alt="Cover"/></div>
+      <div>
+        <div class="repro-title" id="repro-title"></div>
+        <div class="repro-artist" id="repro-artist"></div>
+      </div>
+    </div>
+    <button id="repro-btn" class="repro-btn" aria-label="Play/Pause">⏸</button>
+  </div>
+
+  <script>
+    /* Tu JS actual sin cambios en funciones ni lógica */
+    const top10Container = document.getElementById('top10');
+    const resultsContainer = document.getElementById('results');
+    const searchInput = document.getElementById('search');
+    const repro = document.getElementById('repro');
+    const reproBtn = document.getElementById('repro-btn');
+    const reproImg = document.getElementById('repro-img');
+    const reproTitle = document.getElementById('repro-title');
+    const reproArtist = document.getElementById('repro-artist');
+
+    let currentAudio = null;
+    let currentPlaying = null;
+    let voteTimeout = null;
+
+    function playPreview(song) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+        currentPlaying = null;
+        repro.style.display = 'none';
+      }
+      currentAudio = new Audio(song.archivo);
+      currentAudio.currentTime = 0;
+      currentAudio.play();
+      currentPlaying = song;
+
+      reproImg.src = song.cover;
+      reproTitle.textContent = song.titulo;
+      reproArtist.textContent = song.artista;
+      repro.style.display = 'flex';
+
+      if (voteTimeout) clearTimeout(voteTimeout);
+      voteTimeout = setTimeout(() => {
+        if (currentAudio) {
+          currentAudio.pause();
+          reproBtn.textContent = '▶️';
+        }
+      }, 30000);
+
+      reproBtn.textContent = '⏸';
+    }
+
+    reproBtn.onclick = () => {
+      if (currentAudio) {
+        if (currentAudio.paused) {
+          currentAudio.play();
+          reproBtn.textContent = '⏸';
+        } else {
+          currentAudio.pause();
+          reproBtn.textContent = '▶️';
+        }
+      }
+    };
+
+    function renderTop10(songs) {
+      top10Container.innerHTML = '';
+      songs.forEach((song, i) => {
+        const div = document.createElement('div');
+        div.className = 'top-item';
+
+        div.innerHTML = `
+          <div class="top-pos">${i + 1}</div>
+          <div class="cover top-cover" title="Reproducir preview">
+            <img src="${song.cover}" alt="Cover de ${song.titulo}" />
+            <button class="play-btn top-play" aria-label="Reproducir ${song.titulo}">▶</button>
+          </div>
+          <div class="song-info">
+            <div class="song-title">${song.titulo}</div>
+            <div class="song-artist">${song.artista}</div>
+          </div>
+          <div class="vote-container" title="Votar por esta canción">
+            <div class="heart ${song.votado ? 'voted' : ''}">❤️</div>
+            <div class="votes-count">${song.votos || 0}</div>
+          </div>
+        `;
+
+        div.querySelector('.play-btn').onclick = () => playPreview(song);
+        div.querySelector('.cover').onclick = () => playPreview(song);
+        div.querySelector('.heart').onclick = (e) => vote(song.archivo, e.target);
+
+        top10Container.appendChild(div);
+      });
+    }
+
+    function renderSearchResults(songs) {
+      resultsContainer.innerHTML = '';
+      if (songs.length === 0) {
+        resultsContainer.style.display = 'none';
+        return;
+      }
+      songs.forEach(song => {
+        const div = document.createElement('div');
+        div.className = 'song';
+
+        div.innerHTML = `
+          <div class="cover" title="Solo votar - no reproducir">
+            <img src="${song.cover}" alt="Cover de ${song.titulo}" />
+          </div>
+          <div class="song-info">
+            <div class="song-title">${song.titulo}</div>
+            <div class="song-artist">${song.artista}</div>
+          </div>
+          <div class="vote-container" title="Votar por esta canción">
+            <div class="heart ${song.votado ? 'voted' : ''}">❤️</div>
+            <div class="votes-count">${song.votos || 0}</div>
+          </div>
+        `;
+
+        div.querySelector('.heart').onclick = (e) => vote(song.archivo, e.target);
+
+        resultsContainer.appendChild(div);
+      });
+      resultsContainer.style.display = 'block';
+    }
+
+    async function vote(archivo, heartElement) {
+      if (heartElement.classList.contains('voted')) return;
+
+      try {
+        const res = await fetch('/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archivo })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          heartElement.classList.add('voted');
+
+          const votesCountEl = heartElement.nextElementSibling;
+          if (votesCountEl) {
+            votesCountEl.textContent = data.votos_actuales ?? (parseInt(votesCountEl.textContent) + 1);
+          }
+
+          await cargarTop10();
+
+          if (resultsContainer.style.display === 'block' && searchInput.value.trim().length >= 3) {
+            buscarCanciones(searchInput.value.trim());
+          }
+        } else {
+          alert('Error al votar. Inténtalo más tarde.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Error en la comunicación con el servidor.');
+      }
+    }
+
+    async function cargarTop10() {
+      try {
+        const res = await fetch('/get_results');
+        const data = await res.json();
+        renderTop10(data.top10 || []);
+      } catch (e) {
+        console.error('Error cargando top10:', e);
+      }
+    }
+
+    let buscarTimeout = null;
+    function buscarCanciones(q) {
+      clearTimeout(buscarTimeout);
+      buscarTimeout = setTimeout(async () => {
+        if (q.length < 3) {
+          resultsContainer.style.display = 'none';
+          resultsContainer.innerHTML = '';
+          return;
+        }
+        try {
+          const res = await fetch('/get_results?q=' + encodeURIComponent(q));
+          const data = await res.json();
+          renderSearchResults(data.top10 || []);
+        } catch (e) {
+          console.error('Error buscando canciones:', e);
+        }
+      }, 300);
+    }
+
+    searchInput.addEventListener('input', e => {
+      buscarCanciones(e.target.value.trim());
+    });
+
+    cargarTop10();
+  </script>
+
+  <!-- Añadido: Socket.IO para actualización en tiempo real -->
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
+  <script>
+    const socket = io();
+
+    socket.on('update_votes', (data) => {
+      if (data.top10) {
+        renderTop10(data.top10);
+      }
+    });
+  </script>
+</body>
+</html>

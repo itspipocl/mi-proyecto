@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🌸 Venus Radio - Top 10</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Rubik', sans-serif;
+      background: linear-gradient(to bottom right, #ffe4ec, #fce4ec);
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    header {
+      background: #ff69b4;
+      color: white;
+      padding: 1rem;
+      font-size: 1.8rem;
+      text-align: center;
+      font-weight: 700;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .container {
+      padding: 1rem;
+      max-width: 960px;
+      margin: auto;
+    }
+    #search {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      font-size: 1rem;
+      border: 2px solid #ff69b4;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      outline: none;
+    }
+    .top10, .results {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .top-item, .song {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+    }
+    .top-item:hover, .song:hover {
+      transform: scale(1.01);
+    }
+    .top-pos {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #d81b60;
+      width: 40px;
+      text-align: center;
+    }
+    .cover {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-right: 1rem;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .play-btn {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(255,255,255,0.85);
+      border: none;
+      font-size: 1rem;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .play-btn:hover {
+      background: #fff;
+    }
+    .song-info {
+      flex: 1;
+    }
+    .song-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #333;
+    }
+    .song-artist {
+      font-size: 0.9rem;
+      color: #777;
+    }
+    .vote-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      min-width: 50px;
+    }
+    .heart {
+      font-size: 1.5rem;
+      transition: transform 0.2s ease;
+    }
+    .heart.voted {
+      color: red;
+      transform: scale(1.2);
+    }
+    .votes-count {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    .repro-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #ffc0cb;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 999;
+    }
+    .repro-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .repro-cover img {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+    .repro-title {
+      font-weight: bold;
+    }
+    .repro-btn {
+      font-size: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      .top-item, .song {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .vote-container {
+        flex-direction: row;
+        gap: 10px;
+        margin-top: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>🌸 Venus Radio - Top 10</header>
+  <div class="container">
+    <input type="text" id="search" placeholder="Busca tu canción favorita..." autocomplete="off" />
+    <div class="results" id="results"></div>
+    <h2 style="margin-top: 1.5rem; color: #c2185b;">Top 10</h2>
+    <div class="top10" id="top10" aria-label="Top 10 canciones"></div>
+  </div>
+
+  <div class="repro-container" id="repro" style="display: none;">
+    <div class="repro-info">
+      <div class="repro-cover"><img src="" id="repro-img" alt="Cover" /></div>
+      <div>
+        <div class="repro-title" id="repro-title"></div>
+        <div class="repro-artist" id="repro-artist"></div>
+      </div>
+    </div>
+    <button id="repro-btn" class="repro-btn" aria-label="Play/Pause">⏸</button>
+  </div>
+
+  <script>
+    const top10Container = document.getElementById('top10');
+    const resultsContainer = document.getElementById('results');
+    const searchInput = document.getElementById('search');
+    const repro = document.getElementById('repro');
+    const reproBtn = document.getElementById('repro-btn');
+    const reproImg = document.getElementById('repro-img');
+    const reproTitle = document.getElementById('repro-title');
+    const reproArtist = document.getElementById('repro-artist');
+
+    let currentAudio = null;
+    let currentPlaying = null;
+    let voteTimeout = null;
+
+    function playPreview(song) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+        repro.style.display = 'none';
+      }
+
+      currentAudio = new Audio(song.archivo);
+      currentAudio.currentTime = 0;
+      currentAudio.play();
+      repro.style.display = 'flex';
+
+      reproImg.src = song.cover;
+      reproTitle.textContent = song.titulo;
+      reproArtist.textContent = song.artista;
+      reproBtn.textContent = '⏸';
+
+      if (voteTimeout) clearTimeout(voteTimeout);
+      voteTimeout = setTimeout(() => {
+        if (currentAudio) {
+          currentAudio.pause();
+          reproBtn.textContent = '▶️';
+        }
+      }, 30000);
+    }
+
+    reproBtn.onclick = () => {
+      if (currentAudio) {
+        if (currentAudio.paused) {
+          currentAudio.play();
+          reproBtn.textContent = '⏸';
+        } else {
+          currentAudio.pause();
+          reproBtn.textContent = '▶️';
+        }
+      }
+    };
+
+    async function vote(archivo, heartEl) {
+      if (heartEl.classList.contains('voted')) return;
+
+      try {
+        const res = await fetch('/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archivo })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          heartEl.classList.add('voted');
+          const countEl = heartEl.nextElementSibling;
+          if (countEl) countEl.textContent = data.votos_actuales ?? (parseInt(countEl.textContent) + 1);
+          await cargarTop10();
+          if (searchInput.value.length >= 3) buscarCanciones(searchInput.value);
+        } else if (data.cooldown) {
+          alert(`Ya votaste por esta canción. Intenta de nuevo en ${Math.floor(data.remaining_seconds / 60)}m ${data.remaining_seconds % 60}s`);
+        } else {
+          alert('Error al votar.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('No se pudo votar.');
+      }
+    }
+
+    function renderTop10(songs) {
+      top10Container.innerHTML = '';
+      songs.forEach((song, i) => {
+        const div = document.createElement('div');
+        div.className = 'top-item';
+        div.innerHTML = `
+          <div class="top-pos">${i + 1}</div>
+          <div class="cover">
+            <img src="${song.cover}" alt="Cover" />
+            <button class="play-btn">▶</button>
+          </div>
+          <div class="song-info">
+            <div class="song-title">${song.titulo}</div>
+            <div class="song-artist">${song.artista}</div>
+          </div>
+          <div class="vote-container">
+            <div class="heart ${song.votado ? 'voted' : ''}">❤️</div>
+            <div class="votes-count">${song.votos || 0}</div>
+          </div>`;
+        div.querySelector('.cover').onclick = () => playPreview(song);
+        div.querySelector('.play-btn').onclick = (e) => { e.stopPropagation(); playPreview(song); };
+        div.querySelector('.heart').onclick = (e) => vote(song.archivo, e.target);
+        top10Container.appendChild(div);
+      });
+    }
+
+    function renderSearchResults(songs) {
+      resultsContainer.innerHTML = '';
+      if (!songs.length) return resultsContainer.style.display = 'none';
+      songs.forEach(song => {
+        const div = document.createElement('div');
+        div.className = 'song';
+        div.innerHTML = `
+          <div class="cover"><img src="${song.cover}" alt="Cover" /></div>
+          <div class="song-info">
+            <div class="song-title">${song.titulo}</div>
+            <div class="song-artist">${song.artista}</div>
+          </div>
+          <div class="vote-container">
+            <div class="heart ${song.votado ? 'voted' : ''}">❤️</div>
+            <div class="votes-count">${song.votos || 0}</div>
+          </div>`;
+        div.querySelector('.heart').onclick = (e) => vote(song.archivo, e.target);
+        resultsContainer.appendChild(div);
+      });
+      resultsContainer.style.display = 'flex';
+    }
+
+    let buscarTimeout = null;
+    function buscarCanciones(q) {
+      clearTimeout(buscarTimeout);
+      buscarTimeout = setTimeout(async () => {
+        if (q.length < 3) return resultsContainer.innerHTML = '';
+        try {
+          const res = await fetch('/get_results?q=' + encodeURIComponent(q));
+          const data = await res.json();
+          renderSearchResults(data.top10 || []);
+        } catch (e) { console.error(e); }
+      }, 300);
+    }
+
+    searchInput.addEventListener('input', e => buscarCanciones(e.target.value.trim()));
+
+    async function cargarTop10() {
+      try {
+        const res = await fetch('/get_results');
+        const data = await res.json();
+        renderTop10(data.top10 || []);
+      } catch (e) {
+        console.error('Error cargando top10:', e);
+      }
+    }
+
+    cargarTop10();
+  </script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
+  <script>
+    const socket = io();
+    socket.on('update_votes', (data) => {
+      if (data.top10) renderTop10(data.top10);
+    });
+  </script>
+</body>
+</html>

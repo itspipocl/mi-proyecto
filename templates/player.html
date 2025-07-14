@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venus Radio Player - Votación Top10</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* (Aquí pon todo tu CSS del player que ya tienes, o agrégalo) */
+    body {
+      font-family: 'Rubik', sans-serif;
+      margin: 0; padding: 0; background: #fff;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { color: #ff4da6; }
+    .player-container {
+      background: linear-gradient(135deg, #ffe4ec, #ffd3f3);
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .top10-list {
+      margin-top: 30px;
+    }
+    .top10-list h2 {
+      color: #ff4da6;
+      margin-bottom: 10px;
+    }
+    .song-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+      border-bottom: 1px solid #ffd3f3;
+      padding-bottom: 10px;
+    }
+    .song-cover {
+      width: 50px;
+      height: 50px;
+      border-radius: 6px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(255,77,166,0.3);
+    }
+    .song-info {
+      flex: 1;
+      font-size: 0.9em;
+    }
+    .song-title {
+      font-weight: 700;
+      color: #e91e63;
+    }
+    .song-artist {
+      color: #666;
+      font-size: 0.8em;
+    }
+    .vote-btn {
+      background: #ff4da6;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s ease;
+    }
+    .vote-btn:hover {
+      background: #e43e91;
+    }
+    .votes-count {
+      margin-left: 8px;
+      color: #999;
+      font-size: 0.85em;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Venus Radio Player</h1>
+    <div class="player-container" id="player">
+      <!-- Aquí puedes reutilizar tu player completo -->
+      <audio id="radio" autoplay controls style="width: 100%; border-radius: 10px;"></audio>
+    </div>
+
+    <div class="top10-list">
+      <h2>Top 10 canciones para votar</h2>
+      <div id="top10"></div>
+    </div>
+  </div>
+
+  <script>
+    const radio = document.getElementById('radio');
+
+    // Define streams según dispositivo
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    const streamURL = isMobile
+      ? "https://streaming.venuseventos.com/listen/venus_radio/radio2.mp3"
+      : "https://streaming.venuseventos.com/listen/venus_radio/radio.mp3";
+    radio.src = streamURL;
+
+    // Cargar Top10 con votos
+    async function loadTop10() {
+      try {
+        const res = await fetch('/get_results?q=');
+        const data = await res.json();
+        const top10 = data.top10 || [];
+        const container = document.getElementById('top10');
+        container.innerHTML = '';
+
+        top10.forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'song-item';
+
+          div.innerHTML = `
+            <img src="${c.art || 'https://i.imgur.com/8swyE6J.png'}" alt="Carátula" class="song-cover" />
+            <div class="song-info">
+              <div class="song-title">${c.titulo}</div>
+              <div class="song-artist">${c.artista}</div>
+            </div>
+            <button class="vote-btn" data-archivo="${c.archivo}">Votar</button>
+            <span class="votes-count">${c.votos || 0} ❤️</span>
+          `;
+
+          container.appendChild(div);
+        });
+
+        // Añadir eventos a botones votar
+        document.querySelectorAll('.vote-btn').forEach(btn => {
+          btn.onclick = async () => {
+            const archivo = btn.getAttribute('data-archivo');
+            btn.disabled = true;
+            try {
+              const res = await fetch('/vote', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({archivo})
+              });
+              const json = await res.json();
+              if (json.success) {
+                loadTop10(); // recarga votos actualizados
+              } else {
+                alert('Error votando');
+              }
+            } catch {
+              alert('Error en la conexión');
+            }
+            btn.disabled = false;
+          };
+        });
+
+      } catch (err) {
+        console.error('Error cargando top10:', err);
+      }
+    }
+
+    loadTop10();
+
+    // Socket.IO para actualizar votos en tiempo real
+    const socket = io();
+    socket.on('update_votes', () => {
+      loadTop10();
+    });
+  </script>
+  <script src="//cdn.socket.io/4.5.0/socket.io.min.js"></script>
+</body>
+</html>

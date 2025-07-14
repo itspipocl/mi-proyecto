@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Venus Radio - Gestión Programas y Canciones</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fce4ec;
+      color: #333;
+      margin: 0; padding: 20px;
+    }
+    h1, h2 {
+      color: #d81b60;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      padding: 20px;
+    }
+    section {
+      margin-bottom: 40px;
+    }
+    label {
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="time"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    button {
+      background: #e91e63;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 12px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background: #c2185b;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background: #fce4ec;
+    }
+    .cover-thumb {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .actions button {
+      margin-right: 6px;
+      background: #d81b60;
+    }
+    .actions button.delete {
+      background: #b0003a;
+    }
+    .actions button:hover {
+      filter: brightness(0.9);
+    }
+    .flex-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .flex-row > * {
+      flex: 1 1 200px;
+    }
+    .message {
+      margin: 12px 0;
+      padding: 10px;
+      border-radius: 12px;
+      background: #f8bbd0;
+      color: #880e4f;
+      font-weight: bold;
+    }
+    #live-status {
+      background: #fce4ec;
+      border: 2px solid #d81b60;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 30px;
+      color: #880e4f;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    #live-status span {
+      color: #d81b60;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Panel de Administración - Venus Radio</h1>
+
+    <div id="live-status" aria-live="polite" role="region" aria-atomic="true">
+      Cargando estado actual...
+    </div>
+
+    <!-- Programas -->
+    <section id="programas-section">
+      <h2>Programas</h2>
+      <form id="programa-form">
+        <input type="hidden" id="programa-index" value="" />
+        <div class="flex-row">
+          <div>
+            <label for="programa-nombre">Nombre</label>
+            <input type="text" id="programa-nombre" required />
+          </div>
+          <div>
+            <label for="programa-conductor">Conductor</label>
+            <input type="text" id="programa-conductor" />
+          </div>
+          <div>
+            <label for="programa-inicio">Inicio</label>
+            <input type="time" id="programa-inicio" required />
+          </div>
+          <div>
+            <label for="programa-fin">Fin</label>
+            <input type="time" id="programa-fin" required />
+          </div>
+        </div>
+        <label for="programa-descripcion">Descripción</label>
+        <textarea id="programa-descripcion"></textarea>
+
+        <label for="programa-cover">Cover Art (URL o subir archivo)</label>
+        <input type="text" id="programa-cover-url" placeholder="URL de la imagen" />
+        <input type="file" id="programa-cover-file" accept="image/*" />
+
+        <button type="submit">Guardar Programa</button>
+      </form>
+
+      <table id="programas-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Conductor</th>
+            <th>Horario</th>
+            <th>Cover</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Canciones -->
+    <section id="canciones-section">
+      <h2>Canciones / Metadatos</h2>
+      <form id="cancion-form">
+        <input type="hidden" id="cancion-index" value="" />
+        <label for="cancion-titulo">Título</label>
+        <input type="text" id="cancion-titulo" required />
+
+        <label for="cancion-artista">Artista</label>
+        <input type="text" id="cancion-artista" required />
+
+        <label for="cancion-carátula">Carátula (URL o subir archivo)</label>
+        <input type="text" id="cancion-carátula-url" placeholder="URL de la carátula" />
+        <input type="file" id="cancion-carátula-file" accept="image/*" />
+
+        <label for="cancion-archivo">Archivo de audio</label>
+        <input type="text" id="cancion-archivo" required />
+
+        <button type="submit">Guardar Canción</button>
+      </form>
+
+      <table id="canciones-table">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Artista</th>
+            <th>Carátula</th>
+            <th>Archivo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- NUEVO: Metadatos en tiempo real -->
+    <section id="metadatos-section">
+      <h2>Enviar Metadatos de Prueba</h2>
+      <form id="metadatos-form">
+        <label for="meta-titulo">Título</label>
+        <input type="text" id="meta-titulo" placeholder="Nombre de la canción" required />
+
+        <label for="meta-artista">Artista</label>
+        <input type="text" id="meta-artista" placeholder="Nombre del artista" required />
+
+        <label for="meta-caratula">Carátula (URL)</label>
+        <input type="text" id="meta-caratula" placeholder="https://..." required />
+
+        <button type="submit">Enviar al reproductor</button>
+      </form>
+    </section>
+
+    <div id="message" class="message" style="display:none;"></div>
+  </div>
+
+  <script>
+    let programacion = [];
+    let canciones = [];
+
+    const programasTableBody = document.querySelector('#programas-table tbody');
+    const cancionesTableBody = document.querySelector('#canciones-table tbody');
+    const messageBox = document.getElementById('message');
+    const liveStatusDiv = document.getElementById('live-status');
+
+    function showMessage(text, duration = 4000) {
+      messageBox.textContent = text;
+      messageBox.style.display = 'block';
+      setTimeout(() => messageBox.style.display = 'none', duration);
+    }
+
+    async function cargarDatos() {
+      try {
+        const respProgramas = await fetch('/api/programas');
+        programacion = await respProgramas.json();
+        const respCanciones = await fetch('/api/canciones');
+        canciones = await respCanciones.json();
+        renderProgramas();
+        renderCanciones();
+      } catch (e) {
+        showMessage('Error cargando datos: ' + e.message);
+      }
+    }
+
+    function renderProgramas() {
+      programasTableBody.innerHTML = '';
+      programacion.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.nombre || '-'}</td>
+          <td>${p.conductor || '-'}</td>
+          <td>${p.inicio || '-'} - ${p.fin || '-'}</td>
+          <td><img src="${p.cover || '#'}" class="cover-thumb" onerror="this.src='https://i.imgur.com/8swyE6J.png'" /></td>
+          <td class="actions">
+            <button onclick="editarPrograma(${i})">✏️ Editar</button>
+            <button class="delete" onclick="borrarPrograma(${i})">🗑️ Borrar</button>
+          </td>`;
+        programasTableBody.appendChild(tr);
+      });
+    }
+
+    function renderCanciones() {
+      cancionesTableBody.innerHTML = '';
+      canciones.forEach((c, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${c.titulo || '-'}</td>
+          <td>${c.artista || '-'}</td>
+          <td><img src="${c.caratula || '#'}" class="cover-thumb" onerror="this.src='https://i.imgur.com/8swyE6J.png'" /></td>
+          <td>${c.archivo || '-'}</td>
+          <td class="actions">
+            <button onclick="editarCancion(${i})">✏️ Editar</button>
+            <button class="delete" onclick="borrarCancion(${i})">🗑️ Borrar</button>
+          </td>`;
+        cancionesTableBody.appendChild(tr);
+      });
+    }
+
+    function editarPrograma(i) {
+      const p = programacion[i];
+      document.getElementById('programa-index').value = i;
+      document.getElementById('programa-nombre').value = p.nombre;
+      document.getElementById('programa-conductor').value = p.conductor;
+      document.getElementById('programa-inicio').value = p.inicio;
+      document.getElementById('programa-fin').value = p.fin;
+      document.getElementById('programa-descripcion').value = p.descripcion;
+      document.getElementById('programa-cover-url').value = p.cover;
+    }
+
+    function editarCancion(i) {
+      const c = canciones[i];
+      document.getElementById('cancion-index').value = i;
+      document.getElementById('cancion-titulo').value = c.titulo;
+      document.getElementById('cancion-artista').value = c.artista;
+      document.getElementById('cancion-carátula-url').value = c.caratula;
+      document.getElementById('cancion-archivo').value = c.archivo;
+    }
+
+    async function borrarPrograma(i) {
+      if (!confirm('¿Eliminar este programa?')) return;
+      programacion.splice(i, 1);
+      await guardarProgramas();
+      renderProgramas();
+    }
+
+    async function borrarCancion(i) {
+      if (!confirm('¿Eliminar esta canción?')) return;
+      canciones.splice(i, 1);
+      await guardarCanciones();
+      renderCanciones();
+    }
+
+    async function guardarProgramas() {
+      await fetch('/api/programas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(programacion)
+      });
+      showMessage('Programas guardados');
+    }
+
+    async function guardarCanciones() {
+      await fetch('/api/canciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(canciones)
+      });
+      showMessage('Canciones guardadas');
+    }
+
+    async function subirArchivo(input) {
+      if (input.files.length === 0) return null;
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      return data.url || null;
+    }
+
+    document.getElementById('programa-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const idx = document.getElementById('programa-index').value;
+      const nombre = document.getElementById('programa-nombre').value;
+      const conductor = document.getElementById('programa-conductor').value;
+      const inicio = document.getElementById('programa-inicio').value;
+      const fin = document.getElementById('programa-fin').value;
+      const descripcion = document.getElementById('programa-descripcion').value;
+      let cover = document.getElementById('programa-cover-url').value;
+      const file = document.getElementById('programa-cover-file');
+      if (!cover && file.files.length > 0) cover = await subirArchivo(file);
+      const nuevo = { nombre, conductor, inicio, fin, descripcion, cover };
+      if (idx === '') programacion.push(nuevo);
+      else programacion[idx] = nuevo;
+      await guardarProgramas();
+      renderProgramas();
+      e.target.reset();
+      document.getElementById('programa-index').value = '';
+    });
+
+    document.getElementById('cancion-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const idx = document.getElementById('cancion-index').value;
+      const titulo = document.getElementById('cancion-titulo').value;
+      const artista = document.getElementById('cancion-artista').value;
+      let caratula = document.getElementById('cancion-carátula-url').value;
+      const file = document.getElementById('cancion-carátula-file');
+      if (!caratula && file.files.length > 0) caratula = await subirArchivo(file);
+      const archivo = document.getElementById('cancion-archivo').value;
+      const nuevo = { titulo, artista, caratula, archivo };
+      if (idx === '') canciones.push(nuevo);
+      else canciones[idx] = nuevo;
+      await guardarCanciones();
+      renderCanciones();
+      e.target.reset();
+      document.getElementById('cancion-index').value = '';
+    });
+
+    document.getElementById('metadatos-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const titulo = document.getElementById('meta-titulo').value;
+      const artista = document.getElementById('meta-artista').value;
+      const caratula = document.getElementById('meta-caratula').value;
+      try {
+        const resp = await fetch('/api/emit_metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, artista, caratula })
+        });
+        if (!resp.ok) throw new Error('No se pudo enviar los metadatos');
+        showMessage('✅ Metadatos enviados correctamente al reproductor');
+      } catch (e) {
+        showMessage('❌ Error al enviar metadatos: ' + e.message);
+      }
+    });
+
+    async function actualizarEstado() {
+      try {
+        const res = await fetch('/system_status');
+        if (!res.ok) throw new Error('Error al obtener estado');
+        const data = await res.json();
+        let texto = `Hora actual: <span>${data.hora_actual || '--:--:--'}</span> | Día: <span>${data.dia_actual || '-'}</span> | Programa activo: `;
+        texto += data.programa_actual?.nombre
+          ? `<span>${data.programa_actual.nombre}</span>`
+          : '<span>— Sin programa activo —</span>';
+        liveStatusDiv.innerHTML = texto;
+      } catch (e) {
+        liveStatusDiv.textContent = 'Error cargando estado actual';
+      }
+    }
+
+    actualizarEstado();
+    setInterval(actualizarEstado, 10000);
+    cargarDatos();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+    "monday": [
+        {
+            "nombre": "a",
+            "conductor": "a",
+            "inicio": "14:00",
+            "fin": "15:00",
+            "descripcion": "aaa",
+            "cover": ""
+        }
+    ]
+}

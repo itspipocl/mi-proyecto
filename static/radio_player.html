@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venus Radio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet">
+  <link rel="icon" href="https://i.imgur.com/8swyE6J.png" type="image/png">
+  <meta name="theme-color" content="#fce4ec" />
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      background: #fce4ec;
+      color: #333;
+    }
+    #player {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    #current {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      position: relative;
+    }
+    #current img {
+      width: 120px;
+      height: 120px;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    #current .info {
+      flex: 1 1 250px;
+    }
+    #current h2 {
+      margin: 0;
+      font-size: 1.6rem;
+      color: #d81b60;
+      word-break: break-word;
+    }
+    #current p {
+      margin: 4px 0 0 0;
+      color: #555;
+      word-break: break-word;
+    }
+    #live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-weight: bold;
+      color: #e91e63;
+      user-select: none;
+    }
+    #live-dot {
+      width: 12px;
+      height: 12px;
+      background: #e91e63;
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #controls button {
+      padding: 10px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #e91e63;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #controls button:hover {
+      background: #c2185b;
+    }
+    #controls input[type=range] {
+      width: 100px;
+      cursor: pointer;
+    }
+    #qualitySelect {
+      padding: 7px 10px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #fff;
+      cursor: pointer;
+    }
+    #progress {
+      height: 12px;
+      background: #eee;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    #bar {
+      background: #e91e63;
+      width: 0%;
+      height: 100%;
+      transition: width 0.2s linear;
+    }
+    #times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #d81b60;
+      margin-top: 4px;
+    }
+    section {
+      margin-top: 30px;
+    }
+    section h3 {
+      margin-bottom: 8px;
+      color: #880e4f;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      overflow-x: auto;
+      gap: 12px;
+    }
+    ul li {
+      flex: 0 0 auto;
+      text-align: center;
+      width: 110px;
+      white-space: normal;
+      position: relative;
+      cursor: pointer;
+    }
+    ul img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: block;
+      z-index: 1;
+      position: relative;
+    }
+    ul li:hover img,
+    ul li:focus-within img {
+      transform: scale(1.2);
+      z-index: 10;
+    }
+    .meta {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
+      background: rgba(232, 30, 97, 0.85);
+      color: white;
+      border-radius: 8px;
+      padding: 6px 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      font-size: 0.8rem;
+      line-height: 1.2;
+      z-index: 20;
+      user-select: none;
+    }
+    ul li:hover .meta,
+    ul li:focus-within .meta {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .meta .title {
+      font-weight: bold;
+      color: #fff;
+    }
+    .meta .artist {
+      font-size: 0.75rem;
+      color: #ffe4ec;
+      margin-top: 2px;
+    }
+    #messageBox {
+      margin-top: 10px;
+      font-size: 0.95rem;
+      color: #d81b60;
+      display: none;
+    }
+    @media(max-width:600px){
+      #current {flex-direction: column; align-items: flex-start;}
+      #controls {justify-content: flex-start;}
+      #controls input[type=range] {width: 100%;}
+    }
+  </style>
+</head>
+<body>
+  <div id="player">
+    <div id="current">
+      <img id="cover" src="https://i.imgur.com/8swyE6J.png" alt="Carátula" />
+      <div class="info">
+        <h2 id="title">Cargando...</h2>
+        <p id="artist"></p>
+        <div id="live-indicator">
+          <div id="live-dot"></div><div>En vivo ahora</div>
+        </div>
+      </div>
+      <div id="controls">
+        <button id="playBtn">▶️</button>
+        <button id="voteBtn">❤️ Votar</button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.6" />
+        <select id="qualitySelect">
+          <option value="320">320 kbps (MP3)</option>
+          <option value="64">64 kbps (AAC)</option>
+          <option value="hls">HLS (stream)</option>
+        </select>
+      </div>
+      <div id="messageBox"></div>
+    </div>
+
+    <div id="progress"><div id="bar"></div></div>
+    <div id="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
+
+    <section>
+      <h3>Próximas canciones</h3>
+      <ul id="nextList"></ul>
+    </section>
+
+    <section>
+      <h3>Canciones reproducidas</h3>
+      <ul id="historyList"></ul>
+    </section>
+  </div>
+
+  <audio id="radio" autoplay controls style="display:none"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const API = "https://streaming.venuseventos.com/api/nowplaying/venus_radio";
+    const streams = {
+      "320": "https://streaming.venuseventos.com/listen/venus_radio/radio.mp3",
+      "64": "https://streaming.venuseventos.com/listen/venus_radio/radio2.mp3",
+      "hls": "https://streaming.venuseventos.com/hls/venus_radio/live.m3u8"
+    };
+
+    const radio = document.getElementById("radio");
+    const playBtn = document.getElementById("playBtn");
+    const voteBtn = document.getElementById("voteBtn");
+    const volume = document.getElementById("volume");
+    const cover = document.getElementById("cover");
+    const title = document.getElementById("title");
+    const artist = document.getElementById("artist");
+    const bar = document.getElementById("bar");
+    const elapsed = document.getElementById("elapsed");
+    const duration = document.getElementById("duration");
+    const historyList = document.getElementById("historyList");
+    const nextList = document.getElementById("nextList");
+    const qualitySelect = document.getElementById("qualitySelect");
+    const messageBox = document.getElementById("messageBox");
+
+    let currentQuality = "320";
+    let apiElapsed = 0, apiDuration = 1, lastUpdate = Date.now();
+    let hls = null;
+    let showProgram = false;
+    let latestNP = null;
+    let lastMetaType = null;
+
+    function isProgramActive(programa) {
+      if (!programa || !programa.hora_inicio || !programa.hora_fin) return false;
+      const now = new Date();
+      const [hiH, hiM] = programa.hora_inicio.split(":").map(Number);
+      const [hfH, hfM] = programa.hora_fin.split(":").map(Number);
+      const start = new Date(now); start.setHours(hiH, hiM, 0, 0);
+      const end = new Date(now); end.setHours(hfH, hfM, 0, 0);
+      return end < start ? now >= start || now <= end : now >= start && now <= end;
+    }
+
+    function setupStream(){
+      if(hls){ hls.destroy(); hls = null; }
+      const url = streams[currentQuality];
+      if(currentQuality === "hls" && Hls.isSupported()){
+        hls = new Hls(); hls.loadSource(url); hls.attachMedia(radio);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => radio.play());
+      } else {
+        radio.src = url;
+        radio.play();
+      }
+    }
+
+    playBtn.onclick = () => {
+      if(radio.paused){ radio.play(); }
+      else { radio.pause(); }
+    };
+
+    voteBtn.onclick = () => {
+      // Usamos "archivo" para votar y evitar errores
+      const archivo = latestNP?.now_playing?.song?.archivo;
+      if (!archivo) {
+        messageBox.textContent = "No se puede votar por esta canción.";
+        messageBox.style.display = "block";
+        setTimeout(() => messageBox.style.display = "none", 3000);
+        return;
+      }
+      fetch('/vote', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ archivo })
+      })
+      .then(res => res.json())
+      .then(data => {
+        messageBox.textContent = data.message || "¡Voto enviado!";
+        messageBox.style.display = "block";
+        setTimeout(() => messageBox.style.display = "none", 3000);
+      })
+      .catch(() => {
+        messageBox.textContent = "Error al enviar voto.";
+        messageBox.style.display = "block";
+        setTimeout(() => messageBox.style.display = "none", 3000);
+      });
+    };
+
+    volume.oninput = () => radio.volume = volume.value;
+    qualitySelect.onchange = () => { currentQuality = qualitySelect.value; setupStream(); };
+
+    radio.onplay = () => playBtn.textContent = "⏸";
+    radio.onpause = () => playBtn.textContent = "▶️";
+    radio.onerror = () => console.error("Error al cargar el stream.");
+
+    function formatTime(s){
+      const m = Math.floor(s/60), sec = Math.floor(s%60);
+      return `${m}:${sec < 10 ? "0" : ""}${sec}`;
+    }
+
+    function renderList(container, array){
+      container.innerHTML = "";
+      if(!array) return;
+      array.forEach(item => {
+        const li = document.createElement("li");
+        const img = document.createElement("img");
+        img.src = item.song?.art || "https://i.imgur.com/8swyE6J.png";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = `<div class='title'>${item.song?.title || "-"}</div><div class='artist'>${item.song?.artist || ""}</div>`;
+        li.append(img, meta);
+        container.append(li);
+      });
+    }
+
+    function updateMediaSession(metaData) {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: metaData.title || "Al aire",
+          artist: metaData.artist || "",
+          album: metaData.album || "",
+          artwork: [{ src: metaData.art || "https://i.imgur.com/8swyE6J.png", sizes: '512x512', type: 'image/png' }]
+        });
+        navigator.mediaSession.setActionHandler('play', () => { radio.play(); });
+        navigator.mediaSession.setActionHandler('pause', () => { radio.pause(); });
+      }
+    }
+
+    function updateUI(){
+      if(!latestNP) return;
+      const prog = latestNP.programa_actual;
+      const np = latestNP.now_playing || latestNP;
+      const programActive = isProgramActive(prog);
+
+      if(showProgram && programActive){
+        if(lastMetaType !== "program" || title.textContent !== (prog.nombre || "Programa en vivo")){
+          cover.src = prog.cover || prog.art || "https://i.imgur.com/8swyE6J.png";
+          title.textContent = prog.nombre || "Programa en vivo";
+          artist.textContent = prog.conductor || prog.descripcion || "";
+          updateMediaSession({ title: prog.nombre, artist: prog.conductor, album: "", art: prog.cover });
+          lastMetaType = "program";
+        }
+      } else {
+        if(lastMetaType !== "song" || title.textContent !== (np.song?.title || "Al aire")){
+          cover.src = np.song?.art || "https://i.imgur.com/8swyE6J.png";
+          title.textContent = np.song?.title || "Al aire";
+          artist.textContent = np.song?.artist || "";
+          updateMediaSession({ title: np.song?.title, artist: np.song?.artist, album: np.playlist_name, art: np.song?.art });
+          lastMetaType = "song";
+        }
+      }
+    }
+
+    async function loadNP(){
+      try {
+        const res = await fetch(API);
+        const data = await res.json();
+        latestNP = data;
+        apiElapsed = data.now_playing.elapsed || 0;
+        apiDuration = data.now_playing.duration || 1;
+        lastUpdate = Date.now();
+        renderList(historyList, data.song_history);
+        renderList(nextList, data.playing_next ? [data.playing_next] : []);
+        updateUI();
+      } catch(e){ console.error("Error al cargar:", e); }
+    }
+
+    function animate(){
+      const now = Date.now();
+      let delta = (now - lastUpdate)/1000;
+      let elapsedSec = Math.min(apiElapsed + delta, apiDuration);
+      let pct = (elapsedSec/apiDuration)*100;
+      bar.style.width = pct + "%";
+      elapsed.textContent = formatTime(elapsedSec);
+      duration.textContent = formatTime(apiDuration);
+      requestAnimationFrame(animate);
+    }
+
+    setInterval(() => { showProgram = !showProgram; updateUI(); }, 20000);
+    setupStream();
+    loadNP();
+    setInterval(loadNP, 5000);
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

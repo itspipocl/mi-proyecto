@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venus Radio</title>
+  <style>
+    /* Aquí puedes pegar tu CSS existente */
+    /* Ojo: No he repetido el CSS para no hacer muy largo el código */
+  </style>
+</head>
+<body>
+  <div id="player">
+    <div id="current">
+      <img id="cover" src="https://i.imgur.com/8swyE6J.png" alt="Carátula" />
+      <div class="info">
+        <h2 id="title">Cargando...</h2>
+        <p id="artist"></p>
+        <div id="live-indicator">
+          <div id="live-dot"></div><div>En vivo ahora</div>
+        </div>
+      </div>
+      <div id="controls">
+        <button id="playBtn">▶️</button>
+        <button id="voteBtn">❤️ Votar</button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.6" />
+        <select id="qualitySelect">
+          <option value="320">320 kbps (MP3)</option>
+          <option value="64">64 kbps (AAC)</option>
+          <option value="hls">HLS (stream)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="progress">
+      <div id="bar"></div>
+    </div>
+    <div id="times">
+      <span id="elapsed">0:00</span>
+      <span id="duration">0:00</span>
+    </div>
+
+    <section>
+      <h3>Próximas canciones</h3>
+      <ul id="nextList"></ul>
+    </section>
+
+    <section>
+      <h3>Canciones reproducidas</h3>
+      <ul id="historyList"></ul>
+    </section>
+  </div>
+
+  <audio id="radio" autoplay controls style="display:none"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const API = "https://streaming.venuseventos.com/api/nowplaying/venus_radio";
+
+    const streams = {
+      "320": "https://streaming.venuseventos.com/listen/venus_radio/radio.mp3",
+      "64": "https://streaming.venuseventos.com/listen/venus_radio/radio2.mp3",
+      "hls": "https://streaming.venuseventos.com/hls/venus_radio/live.m3u8"
+    };
+
+    const radio = document.getElementById("radio");
+    const playBtn = document.getElementById("playBtn");
+    const voteBtn = document.getElementById("voteBtn");
+    const volume = document.getElementById("volume");
+    const cover = document.getElementById("cover");
+    const title = document.getElementById("title");
+    const artist = document.getElementById("artist");
+    const bar = document.getElementById("bar");
+    const elapsed = document.getElementById("elapsed");
+    const duration = document.getElementById("duration");
+    const historyList = document.getElementById("historyList");
+    const nextList = document.getElementById("nextList");
+    const qualitySelect = document.getElementById("qualitySelect");
+
+    let currentQuality = "320";
+    let apiElapsed = 0;
+    let apiDuration = 1;
+    let lastUpdate = Date.now();
+    let hls = null;
+
+    // Datos de la última consulta
+    let latestNP = null;
+
+    // Estado actual: mostrar programa o canción
+    let showProgram = false;
+
+    function setupStream() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+
+      const url = streams[currentQuality];
+
+      if (currentQuality === "hls") {
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(radio);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => radio.play());
+        } else if (radio.canPlayType('application/vnd.apple.mpegurl')) {
+          radio.src = url;
+          radio.play();
+        } else {
+          alert("Tu navegador no soporta HLS.");
+        }
+      } else {
+        radio.src = url;
+        radio.play();
+      }
+    }
+
+    playBtn.onclick = () => {
+      if (radio.paused) {
+        radio.play();
+        playBtn.textContent = "⏸";
+      } else {
+        radio.pause();
+        playBtn.textContent = "▶️";
+      }
+    };
+
+    volume.oninput = () => {
+      radio.volume = volume.value;
+    };
+
+    qualitySelect.onchange = () => {
+      currentQuality = qualitySelect.value;
+      setupStream();
+    };
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s < 10 ? "0" : ""}${s}`;
+    }
+
+    function renderList(container, array) {
+      container.innerHTML = "";
+      if (!array) return;
+
+      array.forEach(item => {
+        const li = document.createElement("li");
+        const img = document.createElement("img");
+        img.src = item.song?.art || "https://i.imgur.com/8swyE6J.png";
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = `
+          <div class='title'>${item.song?.title || "-"}</div>
+          <div class='artist'>${item.song?.artist || ""}</div>`;
+
+        li.append(img, meta);
+        container.append(li);
+      });
+    }
+
+    function updateMediaSessionMetadata(metaData) {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: metaData.title || "Al aire",
+          artist: metaData.artist || "",
+          album: metaData.album || "",
+          artwork: [
+            { src: metaData.art || "https://i.imgur.com/8swyE6J.png", sizes: '512x512', type: 'image/png' }
+          ]
+        });
+      }
+    }
+
+    // Actualiza UI según el estado: programa o canción
+    function updateUI() {
+      if (!latestNP) return;
+
+      if (showProgram && latestNP.programa_actual && Object.keys(latestNP.programa_actual).length > 0) {
+        const prog = latestNP.programa_actual;
+
+        cover.src = prog.cover || prog.art || "https://i.imgur.com/8swyE6J.png";
+        title.textContent = prog.nombre || "Programa en vivo";
+        artist.textContent = prog.conductor || prog.descripcion || "";
+
+        updateMediaSessionMetadata({
+          title: prog.nombre || "Programa en vivo",
+          artist: prog.conductor || "",
+          album: "",
+          art: prog.cover || prog.art || "https://i.imgur.com/8swyE6J.png"
+        });
+      } else {
+        const np = latestNP.now_playing || latestNP;
+
+        cover.src = np.song?.art || "https://i.imgur.com/8swyE6J.png";
+        title.textContent = np.song?.title || "Al aire";
+        artist.textContent = np.song?.artist || "";
+
+        updateMediaSessionMetadata({
+          title: np.song?.title || "Al aire",
+          artist: np.song?.artist || "",
+          album: np.playlist_name || "",
+          art: np.song?.art || "https://i.imgur.com/8swyE6J.png"
+        });
+      }
+    }
+
+    async function loadNP() {
+      try {
+        const res = await fetch(API);
+        const data = await res.json();
+
+        latestNP = data;
+        apiElapsed = data.now_playing.elapsed || 0;
+        apiDuration = data.now_playing.duration || 1;
+        lastUpdate = Date.now();
+
+        renderList(historyList, data.song_history);
+        renderList(nextList, data.playing_next ? [data.playing_next] : []);
+
+        if (latestNP.programa_actual && Object.keys(latestNP.programa_actual).length > 0) {
+          showProgram = !showProgram;
+        } else {
+          showProgram = false;
+        }
+
+        updateUI();
+
+      } catch (e) {
+        console.error("Error al cargar:", e);
+      }
+    }
+
+    function animate() {
+      const now = Date.now();
+      let delta = (now - lastUpdate) / 1000;
+      let elapsedSec = Math.min(apiElapsed + delta, apiDuration);
+      let pct = (elapsedSec / apiDuration) * 100;
+
+      bar.style.width = pct + "%";
+      elapsed.textContent = formatTime(elapsedSec);
+      duration.textContent = formatTime(apiDuration);
+
+      requestAnimationFrame(animate);
+    }
+
+    setupStream();
+    loadNP();
+    setInterval(loadNP, 5000);
+
+    // Cada 10 segundos alterna entre mostrar programa o canción si programa activo
+    setInterval(() => {
+      if (latestNP && latestNP.programa_actual && Object.keys(latestNP.programa_actual).length > 0) {
+        showProgram = !showProgram;
+        updateUI();
+      }
+    }, 10000);
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
